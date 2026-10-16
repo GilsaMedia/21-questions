@@ -100,7 +100,7 @@ h1, h2 { margin: 0; }
   max-width: 480px; margin: 0 auto;
   background: var(--ink); color: #fff; text-align: center;
   padding: 14px 18px; border-radius: 16px; box-shadow: var(--shadow);
-  opacity: 0; transform: translateY(20px); transition: .3s ease; z-index: 10;
+  opacity: 0; transform: translateY(20px); transition: .3s ease; z-index: 10; pointer-events: none;
 }
 #toast.show { opacity: 1; transform: none; }
 

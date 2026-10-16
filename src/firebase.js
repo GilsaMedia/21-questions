@@ -1,9 +1,10 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js';
+import { initializeApp } from 'firebase/app';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator,
-} from 'https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js';
+} from 'firebase/firestore';
 
-export const config = self.APP_CONFIG;
+// Defined by public/config.js, which the service worker shares.
+export const config = window.APP_CONFIG;
 export const app = initializeApp(config.firebase);
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),

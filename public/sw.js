@@ -6,11 +6,9 @@ importScripts('https://www.gstatic.com/firebasejs/13.0.0/firebase-messaging-comp
 firebase.initializeApp(self.APP_CONFIG.firebase);
 firebase.messaging();
 
-const CACHE = 'q21-v1';
-const SHELL = [
-  './', 'index.html', 'style.css', 'config.js', 'firebase.js', 'ui.js', 'app.js', 'admin.js',
-  'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
-];
+const CACHE = 'q21-v2';
+// Vite's hashed JS/CSS files get cached by the fetch handler the first time they load.
+const SHELL = ['./', 'index.html', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
