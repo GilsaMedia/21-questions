@@ -12,7 +12,7 @@ self.APP_CONFIG = {
   // Firebase console → Project settings → Cloud Messaging → Web Push certificates
   vapidKey: 'REPLACE_ME',
   // Only used to pick which screen to show; firestore.rules is what actually enforces it.
-  adminEmail: 'REPLACE_ME@gmail.com',
+  ownerEmail: 'gilsalinas639@gmail.com',
   // Set to true only when running against the local Firebase emulators.
   useEmulators: false,
 };

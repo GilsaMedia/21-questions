@@ -10,6 +10,12 @@ const STALE_CODES = new Set([
   'messaging/registration-token-not-registered',
 ]);
 
+// Until the secret and variable are added (README step 3) there is nothing to do; don't fail every 10 minutes.
+if (!process.env.FIREBASE_SERVICE_ACCOUNT || !process.env.SITE_URL) {
+  console.log('FIREBASE_SERVICE_ACCOUNT / SITE_URL not configured yet, skipping.');
+  process.exit(0);
+}
+
 const siteUrl = process.env.SITE_URL.replace(/\/?$/, '/');
 initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
 const db = getFirestore();

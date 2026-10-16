@@ -2,11 +2,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ⬇️ Replace with the Google account you will use for the admin screen (same as adminEmail in docs/config.js).
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function email() {
+      return request.auth.token.email.lower();
+    }
+    // The owner (same as ownerEmail in public/config.js) can manage the list of admins.
+    function isOwner() {
+      return signedIn() && email() == 'gilsalinas639@gmail.com';
+    }
     function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.lower() == 'replace_me@gmail.com';
+      return isOwner() || (signedIn() && exists(/databases/$(database)/documents/admins/$(email())));
+    }
+
+    // One doc per extra admin, keyed by lowercase email. Admins can check their own entry.
+    match /admins/{adminEmail} {
+      allow get: if isOwner() || (signedIn() && email() == adminEmail);
+      allow list, write: if isOwner();
     }
 
     // Quiz metadata (number, title, publish time) is public so the app can show the schedule.

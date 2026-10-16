@@ -3,7 +3,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, connectAuthEmulator,
 } from 'firebase/auth';
 import {
-  collection, doc, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { app, db, config } from '../firebase.js';
 import { fmtDate, ms } from '../lib/format.js';
@@ -15,17 +15,31 @@ const MAX_IMAGE_CHARS = 350_000; // keeps each question doc well under Firestore
 const auth = getAuth(app);
 if (config.useEmulators) connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true });
 
-const isAdminUser = (user) => user?.email?.toLowerCase() === config.adminEmail.toLowerCase();
+// The UI check only decides which screen to show; firestore.rules enforces the same thing on the server.
+async function roleOf(user) {
+  const email = user.email?.toLowerCase();
+  if (!email) return 'none';
+  if (email === config.ownerEmail.toLowerCase()) return 'owner';
+  try {
+    return (await getDoc(doc(db, 'admins', email))).exists() ? 'admin' : 'none';
+  } catch {
+    return 'none';
+  }
+}
 
 export default function Admin({ parts }) {
-  const [user, setUser] = useState(undefined);
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
+  const [session, setSession] = useState(null);
+  useEffect(() => onAuthStateChanged(auth, async (user) => {
+    setSession(user ? { user, role: await roleOf(user) } : { user: null });
+  }), []);
 
-  if (user === undefined) return <Loader />;
+  if (!session) return <Loader />;
+  const { user, role } = session;
   if (!user) return <Login />;
-  if (!isAdminUser(user)) return <Denied user={user} />;
+  if (role === 'none') return <Denied user={user} />;
   if (parts[0] === 'edit') return <Editor key={parts[1] || 'new'} id={parts[1] || null} />;
-  return <QuizList />;
+  if (parts[0] === 'team' && role === 'owner') return <Team />;
+  return <QuizList isOwner={role === 'owner'} />;
 }
 
 const logout = async () => { await signOut(auth); navigate('#/'); };
@@ -69,7 +83,7 @@ function StatusChip({ quiz }) {
   return <span className="chip live">פורסם</span>;
 }
 
-function QuizList() {
+function QuizList({ isOwner }) {
   const { data: quizzes, error, reload } = useLoad(loadAll, []);
   if (error) return <ErrorCard onRetry={reload} />;
   if (!quizzes) return <Loader />;
@@ -78,6 +92,7 @@ function QuizList() {
       <header className="admin-top">
         <h1>ניהול חידונים</h1>
         <div className="admin-actions">
+          {isOwner && <a className="link" href="#/admin/team">מנהלים</a>}
           <a className="link" href="#/">לאפליקציה</a>
           <button className="link" onClick={logout}>התנתקות</button>
         </div>
@@ -92,6 +107,81 @@ function QuizList() {
               <span className="a-title">{q.title?.trim() || 'חידון'}<StatusChip quiz={q} /></span>
               <span className="chev">←</span>
             </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+async function loadAdmins() {
+  const snap = await getDocs(collection(db, 'admins'));
+  return snap.docs.map((d) => d.id).sort();
+}
+
+function Team() {
+  const { data: admins, error, reload } = useLoad(loadAdmins, []);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (error) return <ErrorCard onRetry={reload} />;
+  if (!admins) return <Loader />;
+
+  const add = async (e) => {
+    e.preventDefault();
+    const clean = email.trim().toLowerCase();
+    if (!/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(clean)) return toast('כתובת המייל לא תקינה');
+    if (clean === config.ownerEmail.toLowerCase() || admins.includes(clean)) return toast('הכתובת כבר ברשימה');
+    setBusy(true);
+    try {
+      await setDoc(doc(db, 'admins', clean), { addedAt: serverTimestamp() });
+      setEmail('');
+      toast(`${clean} נוסף/ה כמנהל/ת ✓`);
+      reload();
+    } catch (err) {
+      console.error(err);
+      toast('ההוספה נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (who) => {
+    if (!confirm(`להסיר את ${who} מהמנהלים?`)) return;
+    await deleteDoc(doc(db, 'admins', who));
+    reload();
+  };
+
+  return (
+    <div className="admin">
+      <header className="admin-top">
+        <a className="link" href="#/admin">→ כל החידונים</a>
+        <h1>מנהלים</h1>
+      </header>
+      <section className="card form-card">
+        <p className="hint">
+          מנהלים יכולים ליצור, לערוך ולפרסם חידונים. רק את/ה יכול/ה להוסיף או להסיר מנהלים.
+          הם נכנסים לאותו מסך ניהול עם חשבון ה-Google של המייל הזה.
+        </p>
+        <form className="add-admin" onSubmit={add}>
+          <input
+            type="email"
+            dir="ltr"
+            placeholder="name@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button className="btn primary" disabled={busy}>הוספה</button>
+        </form>
+      </section>
+      <ul className="admin-list">
+        <li className="card admin-item">
+          <span className="a-title" dir="ltr">{config.ownerEmail}</span>
+          <span className="chip live">בעלים</span>
+        </li>
+        {admins.map((a) => (
+          <li key={a} className="card admin-item">
+            <span className="a-title" dir="ltr">{a}</span>
+            <button className="btn small ghost" onClick={() => remove(a)}>הסרה</button>
           </li>
         ))}
       </ul>

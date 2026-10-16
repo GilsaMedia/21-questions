@@ -259,3 +259,7 @@ input:focus, textarea:focus { outline: none; border-color: #a78bfa; background: 
   background: rgba(255, 255, 255, .96); box-shadow: 0 -6px 20px rgba(0, 0, 0, .12);
 }
 #filled { margin-inline-end: auto; color: var(--muted); font-weight: 500; }
+
+.add-admin { display: flex; gap: 10px; margin-top: 14px; }
+.add-admin input { flex: 1; }
+.a-title[dir="ltr"] { text-align: end; }
